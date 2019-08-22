@@ -15,8 +15,8 @@
 #include "normstrngs_test.h"
 #include "strngs.h"
 #include "unichar.h"
-#if defined(HAS_UNILIB_H)
-#include "unilib.h"
+#ifdef INCLUDE_TENSORFLOW
+#include "util/utf8/unilib.h"           // for UniLib
 #endif
 
 #include "include_gunit.h"
@@ -24,7 +24,7 @@
 namespace tesseract {
 namespace {
 
-#if defined(HAS_UNILIB_H)
+#if defined(MISSING_CODE)
 static std::string EncodeAsUTF8(const char32 ch32) {
   UNICHAR uni_ch(ch32);
   return std::string(uni_ch.utf8(), uni_ch.utf8_len());
@@ -363,23 +363,25 @@ TEST(NormstrngsTest, SpanUTF8NotWhitespace) {
   EXPECT_EQ(12, SpanUTF8NotWhitespace(kMixedText));
 }
 
-#if defined(HAS_UNILIB_H)
 // Test that the method clones the util/utf8/public/unilib definition of
 // interchange validity.
 TEST(NormstrngsTest, IsInterchangeValid) {
+#ifdef INCLUDE_TENSORFLOW
   const int32_t kMinUnicodeValue = 33;
   const int32_t kMaxUnicodeValue = 0x10FFFF;
   for (int32_t ch = kMinUnicodeValue; ch <= kMaxUnicodeValue; ++ch) {
     SCOPED_TRACE(absl::StrFormat("Failed at U+%x", ch));
     EXPECT_EQ(UniLib::IsInterchangeValid(ch), IsInterchangeValid(ch));
   }
-}
+#else
+  GTEST_SKIP();
 #endif
+}
 
-#if defined(HAS_UNILIB_H)
 // Test that the method clones the util/utf8/public/unilib definition of
 // 7-bit ASCII interchange validity.
 TEST(NormstrngsTest, IsInterchangeValid7BitAscii) {
+#if defined(MISSING_CODE) && defined(INCLUDE_TENSORFLOW)
   const int32_t kMinUnicodeValue = 33;
   const int32_t kMaxUnicodeValue = 0x10FFFF;
   for (int32_t ch = kMinUnicodeValue; ch <= kMaxUnicodeValue; ++ch) {
@@ -388,8 +390,11 @@ TEST(NormstrngsTest, IsInterchangeValid7BitAscii) {
     EXPECT_EQ(UniLib::IsInterchangeValid7BitAscii(str),
               IsInterchangeValid7BitAscii(ch));
   }
-}
+#else
+  // Skipped because of missing UniLib::IsInterchangeValid7BitAscii.
+  GTEST_SKIP();
 #endif
+}
 
 // Test that the method clones the util/utf8/public/unilib definition of
 // fullwidth-halfwidth .
@@ -401,7 +406,8 @@ TEST(NormstrngsTest, FullwidthToHalfwidth) {
   // U+FFE6 -> U+20A9 (won sign)
   EXPECT_EQ(0x20A9, FullwidthToHalfwidth(0xFFE6));
 
-#if defined(HAS_UNILIB_H)
+#if defined(MISSING_CODE) && defined(INCLUDE_TENSORFLOW)
+  // Skipped because of missing UniLib::FullwidthToHalfwidth.
   const int32_t kMinUnicodeValue = 33;
   const int32_t kMaxUnicodeValue = 0x10FFFF;
   for (int32_t ch = kMinUnicodeValue; ch <= kMaxUnicodeValue; ++ch) {

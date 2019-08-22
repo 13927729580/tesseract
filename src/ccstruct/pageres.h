@@ -20,6 +20,7 @@
 #define PAGERES_H
 
 #include <cstdint>             // for int32_t, int16_t
+#include <functional>          // for std::function
 #include <set>                 // for std::pair
 #include <vector>              // for std::vector
 #include <sys/types.h>         // for int8_t
@@ -47,8 +48,6 @@ class WERD_RES;
 
 struct Pix;
 struct TWERD;
-
-template <class R, class A1, class A2> class TessResultCallback2;
 
 namespace tesseract {
   class BoxWord;
@@ -224,8 +223,10 @@ class WERD_RES : public ELIST_LINK {
   std::vector<std::vector<std::pair<const char*, float>>> accumulated_timesteps;
   std::vector<std::vector<std::vector<std::pair<const char*, float>>>>
       symbol_steps;
-  //Stores if the timestep vector starts with a space
-  bool leadingSpace = false;
+  //Symbolchoices aquired during CTC
+  std::vector<std::vector<std::pair<const char*, float>>> CTC_symbol_choices;
+  // Stores if the timestep vector starts with a space
+  bool leading_space = false;
   // Ratings matrix contains classifier choices for each classified combination
   // of blobs. The dimension is the same as the number of blobs in chopped_word
   // and the leading diagonal corresponds to classifier results of the blobs
@@ -626,8 +627,8 @@ class WERD_RES : public ELIST_LINK {
   // result to the class returned from class_cb.
   // Returns true if anything was merged.
   bool ConditionalBlobMerge(
-      TessResultCallback2<UNICHAR_ID, UNICHAR_ID, UNICHAR_ID>* class_cb,
-      TessResultCallback2<bool, const TBOX&, const TBOX&>* box_cb);
+      std::function<UNICHAR_ID(UNICHAR_ID, UNICHAR_ID)> class_cb,
+      std::function<bool(const TBOX&, const TBOX&)> box_cb);
 
   // Merges 2 adjacent blobs in the result (index and index+1) and corrects
   // all the data to account for the change.

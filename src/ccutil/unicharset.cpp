@@ -28,7 +28,6 @@
 
 #include "params.h"
 #include "serialis.h"
-#include "tesscallback.h"
 #include "unichar.h"
 
 // TODO(rays) Move UNICHARSET to tesseract namespace.
@@ -730,44 +729,6 @@ bool UNICHARSET::save_to_string(STRING *str) const {
   return true;
 }
 
-// TODO(rays) Replace with TFile everywhere.
-class InMemoryFilePointer {
- public:
-  InMemoryFilePointer(const char *memory, int mem_size)
-      : memory_(memory), fgets_ptr_(memory), mem_size_(mem_size) { }
-
-  char *fgets(char *orig_dst, int size) {
-    const char *src_end = memory_ + mem_size_;
-    char *dst_end = orig_dst + size - 1;
-    if (size < 1) {
-      return fgets_ptr_ < src_end ? orig_dst : nullptr;
-    }
-
-    char *dst = orig_dst;
-    char ch = '^';
-    while (fgets_ptr_ < src_end && dst < dst_end && ch != '\n') {
-      ch = *dst++ = *fgets_ptr_++;
-    }
-    *dst = 0;
-    return (dst == orig_dst) ? nullptr : orig_dst;
-  }
-
- private:
-  const char *memory_;
-  const char *fgets_ptr_;
-  const int mem_size_;
-};
-
-bool UNICHARSET::load_from_inmemory_file(
-    const char *memory, int mem_size, bool skip_fragments) {
-  InMemoryFilePointer mem_fp(memory, mem_size);
-  TessResultCallback2<char *, char *, int> *fgets_cb =
-      NewPermanentTessCallback(&mem_fp, &InMemoryFilePointer::fgets);
-  bool success = load_via_fgets(fgets_cb, skip_fragments);
-  delete fgets_cb;
-  return success;
-}
-
 class LocalFilePointer {
  public:
   LocalFilePointer(FILE *stream) : fp_(stream) {}
@@ -780,29 +741,28 @@ class LocalFilePointer {
 
 bool UNICHARSET::load_from_file(FILE *file, bool skip_fragments) {
   LocalFilePointer lfp(file);
-  TessResultCallback2<char *, char *, int> *fgets_cb =
-      NewPermanentTessCallback(&lfp, &LocalFilePointer::fgets);
+  using namespace std::placeholders;  // for _1, _2
+  std::function<char*(char*, int)> fgets_cb =
+      std::bind(&LocalFilePointer::fgets, &lfp, _1, _2);
   bool success = load_via_fgets(fgets_cb, skip_fragments);
-  delete fgets_cb;
   return success;
 }
 
 bool UNICHARSET::load_from_file(tesseract::TFile *file, bool skip_fragments) {
-  TessResultCallback2<char *, char *, int> *fgets_cb =
-      NewPermanentTessCallback(file, &tesseract::TFile::FGets);
+  using namespace std::placeholders;  // for _1, _2
+  std::function<char*(char*, int)> fgets_cb =
+      std::bind(&tesseract::TFile::FGets, file, _1, _2);
   bool success = load_via_fgets(fgets_cb, skip_fragments);
-  delete fgets_cb;
   return success;
 }
 
-bool UNICHARSET::load_via_fgets(
-    TessResultCallback2<char *, char *, int> *fgets_cb,
-    bool skip_fragments) {
+bool UNICHARSET::load_via_fgets(std::function<char*(char*, int)> fgets_cb,
+                                bool skip_fragments) {
   int unicharset_size;
   char buffer[256];
 
   this->clear();
-  if (fgets_cb->Run(buffer, sizeof(buffer)) == nullptr ||
+  if (fgets_cb(buffer, sizeof(buffer)) == nullptr ||
       sscanf(buffer, "%d", &unicharset_size) != 1) {
     return false;
   }
@@ -828,7 +788,7 @@ bool UNICHARSET::load_via_fgets(
     int direction = UNICHARSET::U_LEFT_TO_RIGHT;
     UNICHAR_ID other_case = unicharset_size;
     UNICHAR_ID mirror = unicharset_size;
-    if (fgets_cb->Run(buffer, sizeof (buffer)) == nullptr) {
+    if (fgets_cb(buffer, sizeof (buffer)) == nullptr) {
       return false;
     }
     char normed[64];

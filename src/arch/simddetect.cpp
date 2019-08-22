@@ -18,13 +18,11 @@
 #include <numeric>           // for std::inner_product
 #include "simddetect.h"
 #include "dotproduct.h"
-#include "dotproductavx.h"
-#include "dotproductsse.h"
 #include "intsimdmatrix.h"   // for IntSimdMatrix
 #include "params.h"   // for STRING_VAR
 #include "tprintf.h"  // for tprintf
 
-#if defined(AVX) || defined(AVX2) || defined(SSE4_1)
+#if defined(AVX) || defined(AVX2) || defined(FMA) || defined(SSE4_1)
 # define HAS_CPUID
 #endif
 
@@ -60,6 +58,8 @@ bool SIMDDetect::avx_available_;
 bool SIMDDetect::avx2_available_;
 bool SIMDDetect::avx512F_available_;
 bool SIMDDetect::avx512BW_available_;
+// If true, then FMA has been detected.
+bool SIMDDetect::fma_available_;
 // If true, then SSe4.1 has been detected.
 bool SIMDDetect::sse_available_;
 
@@ -98,6 +98,9 @@ SIMDDetect::SIMDDetect() {
 #if defined(SSE4_1)
     sse_available_ = (ecx & 0x00080000) != 0;
 #endif
+#if defined(FMA)
+    fma_available_ = (ecx & 0x00001000) != 0;
+#endif
 #if defined(AVX)
     avx_available_ = (ecx & 0x10000000) != 0;
     if (avx_available_) {
@@ -117,15 +120,19 @@ SIMDDetect::SIMDDetect() {
   __cpuid(cpuInfo, 0);
   max_function_id = cpuInfo[0];
   if (max_function_id >= 1) {
+    bool xmm_ymm_state_enabled = (_xgetbv(0) & 6) == 6;
     __cpuid(cpuInfo, 1);
 #if defined(SSE4_1)
     sse_available_ = (cpuInfo[2] & 0x00080000) != 0;
+#endif
+#if defined(FMA)
+    fma_available_ = xmm_ymm_state_enabled && (cpuInfo[2] & 0x00001000) != 0;
 #endif
 #if defined(AVX)
     avx_available_ = (cpuInfo[2] & 0x10000000) != 0;
 #endif
 #if defined(AVX2)
-    if (max_function_id >= 7) {
+    if (max_function_id >= 7 && xmm_ymm_state_enabled) {
       __cpuid(cpuInfo, 7);
       avx2_available_ = (cpuInfo[1] & 0x00000020) != 0;
       avx512F_available_ = (cpuInfo[1] & 0x00010000) != 0;
@@ -184,6 +191,12 @@ void SIMDDetect::Update() {
     // AVX selected by config variable.
     SetDotProduct(DotProductAVX, &IntSimdMatrix::intSimdMatrixSSE);
     dotproduct_method = "avx";
+#endif
+#if defined(FMA)
+  } else if (!strcmp(dotproduct.string(), "fma")) {
+    // FMA selected by config variable.
+    SetDotProduct(DotProductFMA, IntSimdMatrix::intSimdMatrix);
+    dotproduct_method = "fma";
 #endif
 #if defined(SSE4_1)
   } else if (!strcmp(dotproduct.string(), "sse")) {

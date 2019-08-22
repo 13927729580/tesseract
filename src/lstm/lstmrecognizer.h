@@ -2,7 +2,6 @@
 // File:        lstmrecognizer.h
 // Description: Top-level line recognizer class for LSTM-based networks.
 // Author:      Ray Smith
-// Created:     Thu May 02 08:57:06 PST 2013
 //
 // (C) Copyright 2013, Google Inc.
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,10 +129,12 @@ class LSTMRecognizer {
 
   // Provides access to the UNICHARSET that this classifier works with.
   const UNICHARSET& GetUnicharset() const { return ccutil_.unicharset; }
+  UNICHARSET& GetUnicharset() { return ccutil_.unicharset; }
   // Provides access to the UnicharCompress that this classifier works with.
   const UnicharCompress& GetRecoder() const { return recoder_; }
   // Provides access to the Dict that this classifier works with.
   const Dict* GetDict() const { return dict_; }
+  Dict* GetDict() { return dict_; }
   // Sets the sample iteration to the given value. The sample_iteration_
   // determines the seed for the random number generator. The training
   // iteration is incremented only by a successful training iteration.
@@ -175,7 +176,8 @@ class LSTMRecognizer {
   // will be used in a dictionary word.
   void RecognizeLine(const ImageData& image_data, bool invert, bool debug,
                      double worst_dict_cert, const TBOX& line_box,
-                     PointerVector<WERD_RES>* words, int lstm_choice_mode = 0);
+                     PointerVector<WERD_RES>* words, int lstm_choice_mode = 0,
+                     int lstm_choice_amount = 5);
 
   // Helper computes min and mean best results in the output.
   void OutputStats(const NetworkIO& outputs, float* min_output,

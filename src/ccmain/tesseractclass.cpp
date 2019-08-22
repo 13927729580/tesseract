@@ -469,8 +469,7 @@ Tesseract::Tesseract()
       BOOL_MEMBER(tessedit_create_boxfile, false, "Output text with boxes",
                   this->params()),
       INT_MEMBER(tessedit_page_number, -1,
-                 "-1 -> All pages"
-                 " , else specific page to process",
+                 "-1 -> All pages, else specific page to process",
                  this->params()),
       BOOL_MEMBER(tessedit_write_images, false,
                   "Capture the image from the IPE", this->params()),
@@ -528,8 +527,23 @@ Tesseract::Tesseract()
           "With 2 the alternative symbol choices are accumulated per "
           "character. "
           "With 3 the alternative symbol choices per timestep are included "
-          "and separated by the suggested segmentation of Tesseract",
+          "and separated by the suggested segmentation of Tesseract. "
+          "With 4 alternative symbol choices are extracted from the CTC "
+          "process instead of the lattice. The choices are mapped per "
+          "character.",
           this->params()),
+      INT_MEMBER(
+          lstm_choice_amount, 5,
+          "Sets the number of choices one get per character in "
+          "lstm_choice_mode. Note that lstm_choice_mode must be set to a "
+          "value greater than 0 to produce results.",
+                 this->params()),
+      double_MEMBER(
+          lstm_rating_coefficient, 5,
+          "Sets the rating coefficient for the lstm choices. The smaller the "
+          "coefficient, the better are the ratings for each choice and less "
+          "information is lost due to the cut off at 0. The standard value is "
+          "5", this->params()),
 
       backup_config_file_(nullptr),
       pix_binary_(nullptr),
@@ -563,17 +577,14 @@ Tesseract::~Tesseract() {
 #endif
 }
 
-Dict& Tesseract::getDict()
-{
-    if (0 == Classify::getDict().NumDawgs() && AnyLSTMLang())
-    {
-        if (lstm_recognizer_ && lstm_recognizer_->GetDict())
-        {
-            return *const_cast<Dict*>(lstm_recognizer_->GetDict());
-        }
+Dict& Tesseract::getDict() {
+  if (0 == Classify::getDict().NumDawgs() && AnyLSTMLang()) {
+    if (lstm_recognizer_ && lstm_recognizer_->GetDict()) {
+      return *lstm_recognizer_->GetDict();
     }
-    return Classify::getDict();
   }
+  return Classify::getDict();
+}
 
 
 void Tesseract::Clear() {
@@ -622,7 +633,7 @@ void Tesseract::SetBlackAndWhitelist() {
                                      tessedit_char_whitelist.string(),
                                      tessedit_char_unblacklist.string());
   if (lstm_recognizer_) {
-    UNICHARSET& lstm_unicharset = const_cast<UNICHARSET&> (lstm_recognizer_->GetUnicharset());
+    UNICHARSET& lstm_unicharset = lstm_recognizer_->GetUnicharset();
     lstm_unicharset.set_black_and_whitelist(tessedit_char_blacklist.string(),
                                             tessedit_char_whitelist.string(),
                                             tessedit_char_unblacklist.string());
@@ -633,7 +644,7 @@ void Tesseract::SetBlackAndWhitelist() {
         tessedit_char_blacklist.string(), tessedit_char_whitelist.string(),
         tessedit_char_unblacklist.string());
     if (sub_langs_[i]->lstm_recognizer_) {
-      UNICHARSET& lstm_unicharset = const_cast<UNICHARSET&> (sub_langs_[i]->lstm_recognizer_->GetUnicharset());
+      UNICHARSET& lstm_unicharset = sub_langs_[i]->lstm_recognizer_->GetUnicharset();
       lstm_unicharset.set_black_and_whitelist(tessedit_char_blacklist.string(),
                                               tessedit_char_whitelist.string(),
                                               tessedit_char_unblacklist.string());

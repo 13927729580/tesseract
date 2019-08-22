@@ -76,8 +76,6 @@ class WERD_RES;
 //
 //             CCUtil (ccutil/ccutil.h)
 //                         ^      Members include: UNICHARSET
-//            CUtil (cutil/cutil_class.h)
-//                         ^       Members include: TBLOB*, TEXTBLOCK*
 //           CCStruct (ccstruct/ccstruct.h)
 //                         ^       Members include: Image
 //           Classify (classify/classify.h)
@@ -648,10 +646,10 @@ class Tesseract : public Wordrec {
   void quality_based_rejection(PAGE_RES_IT& page_res_it, bool good_quality_doc);
   void convert_bad_unlv_chs(WERD_RES* word_res);
   void tilde_delete(PAGE_RES_IT& page_res_it);
-  int16_t word_blob_quality(WERD_RES* word, ROW* row);
-  void word_char_quality(WERD_RES* word, ROW* row, int16_t* match_count,
+  int16_t word_blob_quality(WERD_RES* word);
+  void word_char_quality(WERD_RES* word, int16_t* match_count,
                          int16_t* accepted_match_count);
-  void unrej_good_chs(WERD_RES* word, ROW* row);
+  void unrej_good_chs(WERD_RES* word);
   int16_t count_outline_errs(char c, int16_t outline_count);
   int16_t word_outline_errs(WERD_RES* word);
 #ifndef DISABLED_LEGACY_ENGINE
@@ -1093,7 +1091,19 @@ class Tesseract : public Wordrec {
             "With 2 the alternative symbol choices are accumulated per "
             "character. "
             "With 3 the alternative symbol choices per timestep are included "
-            "and separated by the suggested segmentation of Tesseract");
+            "and separated by the suggested segmentation of Tesseract. "
+            "With 4 alternative symbol choices are extracted from the CTC "
+            "process instead of the lattice. The choices are mapped per "
+            "character.");
+  INT_VAR_H(lstm_choice_amount, 5,
+            "Sets the number of choices one get per character in "
+            "lstm_choice_mode. Note that lstm_choice_mode must be set to "
+            "a value greater than 0 to produce results.");
+  double_VAR_H(lstm_rating_coefficient, 5, 
+               "Sets the rating coefficient for the lstm choices. The smaller "
+               "the coefficient, the better are the ratings for each choice "
+               "and less information is lost due to the cut off at 0. The "
+               "standard value is 5.");
 
   //// ambigsrecog.cpp /////////////////////////////////////////////////////////
   FILE* init_recog_training(const STRING& fname);
